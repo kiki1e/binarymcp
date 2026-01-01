@@ -1,0 +1,13 @@
+[project]
+name = "idamcp-kiki1e"
+version = "0.1.0"
+description = "IDA Pro Bridge for MCP - AI 辅助逆向分析接口"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp",
+    "requests",
+    "uvicorn"
+]
+
+[project.scripts]
+idamcp = "mcp_bridge:main"
