@@ -12,24 +12,29 @@ authors = [
 dependencies = [
     # MCP 核心
     "mcp>=1.0.0",
-    
+
     # GDB 控制
     "pygdbmi>=0.11.0.0",
-    
+
     # Web 服务
     "fastapi>=0.100.0",
     "uvicorn>=0.23.0",
-    
+
     # PWN 工具
     "pwntools>=4.14.1",
     "ROPgadget>=6.5.0",
     "LibcSearcher",
     "ropper>=1.13.0",
-    
+
+    # 密码学
+    "gmpy2>=2.1.0",
+    "sympy>=1.12",
+    "cryptography>=41.0.0",
+
     # 系统工具
     "psutil>=5.9.0",
     "rich>=14.1.0",
-    
+
     # 其他依赖
     "requests>=2.31.0",
     "python-dotenv>=1.0.0",
@@ -39,6 +44,8 @@ dependencies = [
 pwnmcp-server = "pwnmcp.__main__:main"
 
 [project.optional-dependencies]
+angr = ["angr>=9.2.0"]
+full = ["angr>=9.2.0"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio",

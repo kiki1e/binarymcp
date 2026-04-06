@@ -14,7 +14,7 @@ import ida_lines
 import ida_name
 
 # 配置
-HOST = "127.0.0.1"
+HOST = "0.0.0.0"  # 允许 Docker 容器通过 host.docker.internal 访问
 PORT = 4000
 
 class IDARequestHandler(BaseHTTPRequestHandler):

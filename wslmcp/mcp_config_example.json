@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "binary_pwn": {
+      "command": "wsl",
+      "args": [
+        "bash",
+        "-c",
+        "cd /mnt/c/Users/ds/Desktop/binarymcp/wslmcp && ./start.sh"
+      ]
+    }
+  }
+}

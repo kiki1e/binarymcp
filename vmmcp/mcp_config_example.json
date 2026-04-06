@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "binary_pwn": {
+      "url": "http://YOUR_VM_IP:5500/sse"
+    }
+  }
+}
