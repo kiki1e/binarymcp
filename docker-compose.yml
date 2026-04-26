@@ -1,0 +1,166 @@
+#
+# BinaryMCP 融合平台 — Docker Compose
+#
+# 四个服务:
+#   engine     — 二进制分析引擎 (pwnmcp + GDB + pwndbg + Rizin)
+#   backend    — 统一 API 后端 (Key管理 + 模型路由 + 分析编排 + GitHub扫描)
+#   ida-bridge — IDA Pro HTTP 代理 (Docker → Windows 主机)
+#   frontend   — React 前端 (nginx 反向代理)
+#
+
+services:
+  # ════════════════════════════════════════
+  # 二进制分析引擎 (改造自 pwnmcp)
+  # ════════════════════════════════════════
+  engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pwnmcp-engine:latest
+    container_name: binarymcp-engine
+
+    # GDB ptrace 调试所需权限
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+
+    user: root
+
+    ports:
+      - "${MCP_PORT:-5500}:${MCP_PORT:-5500}"
+
+    volumes:
+      - workspace:/workspace
+
+    environment:
+      - HOST=0.0.0.0
+      - MCP_PORT=${MCP_PORT:-5500}
+      - TRANSPORT=sse
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENABLE_DEEP_STATIC=${ENABLE_DEEP_STATIC:-true}
+      - ENABLE_RETDEC=${ENABLE_RETDEC:-false}
+      - WORKSPACE_DIR=/workspace
+      - GDB_PATH=pwndbg
+      - ALLOW_DANGEROUS=true
+
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import socket; socket.create_connection((\"localhost\", 5500), timeout=5).close()'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ════════════════════════════════════════
+  # 统一 API 后端
+  # ════════════════════════════════════════
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: binarymcp-backend:latest
+    container_name: binarymcp-backend
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - db_data:/app/data
+      - workspace:/workspace
+
+    env_file:
+      - .env.backend
+
+    environment:
+      - ENGINE_URL=http://engine:${MCP_PORT:-5500}
+      - IDA_BRIDGE_URL=http://ida-bridge:5600
+      - WORKSPACE_DIR=/workspace
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ════════════════════════════════════════
+  # IDA Pro HTTP 代理 (Docker → Windows 主机)
+  # ════════════════════════════════════════
+  ida-bridge:
+    build:
+      context: ./ida-bridge
+      dockerfile: Dockerfile
+    image: binarymcp-ida-bridge:latest
+    container_name: binarymcp-ida-bridge
+
+    ports:
+      - "5600:5600"
+
+    environment:
+      - IDA_URL=http://host.docker.internal:4000
+      - IDA_TIMEOUT=30
+
+    # Linux Docker 需要这行来解析 host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    restart: unless-stopped
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ════════════════════════════════════════
+  # React 前端 (nginx 反向代理)
+  # ════════════════════════════════════════
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: binarymcp-frontend:latest
+    container_name: binarymcp-frontend
+
+    ports:
+      - "80:80"
+
+    restart: unless-stopped
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  db_data:
+    driver: local
+  workspace:
+    driver: local
